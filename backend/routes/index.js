@@ -1,0 +1,1 @@
+const express = require('express');\nconst router = express.Router();\n\n// A simple home route for the API\nrouter.get('/', (req, res) => {\n  res.send('Hello from the MarketAI backend API!');\n});\n\n// You can add more specific routes here later. For example:\n// router.get('/products', (req, res) => { ... });\n\nmodule.exports = router;
