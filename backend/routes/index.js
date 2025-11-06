@@ -28,10 +28,17 @@ const upload = multer({
 });
 
 // Configuration from environment variables
-const COLAB_AI_SERVER_URL = process.env.COLAB_AI_SERVER_URL || 'https://marshiest-signe-unparried.ngrok-free.dev/edit';
+const COLAB_AI_SERVER_URL = process.env.COLAB_AI_SERVER_URL;
 const REQUEST_TIMEOUT = parseInt(process.env.REQUEST_TIMEOUT || '180000', 10);
 const MAX_RETRIES = parseInt(process.env.MAX_RETRIES || '3', 10);
 const RETRY_DELAY = parseInt(process.env.RETRY_DELAY || '2000', 10);
+
+// Ensure COLAB_AI_SERVER_URL is configured
+if (!COLAB_AI_SERVER_URL) {
+  console.error('[ERROR] COLAB_AI_SERVER_URL is not set in environment variables!');
+  console.error('[ERROR] Please configure COLAB_AI_SERVER_URL in your .env file.');
+  console.error('[ERROR] The /api/edit endpoint will not work until this is configured.');
+}
 
 // Validate Ngrok URL on startup
 const validateServerUrl = (url) => {
@@ -79,7 +86,7 @@ const retryRequest = async (fn, maxRetries = MAX_RETRIES, retryDelay = RETRY_DEL
 };
 
 // Validate URL on startup
-if (!validateServerUrl(COLAB_AI_SERVER_URL)) {
+if (COLAB_AI_SERVER_URL && !validateServerUrl(COLAB_AI_SERVER_URL)) {
   console.warn('[WARNING] COLAB_AI_SERVER_URL is invalid. The /api/edit endpoint may not work correctly.');
   console.warn('[WARNING] Please set a valid COLAB_AI_SERVER_URL in your .env file.');
 }
@@ -92,8 +99,8 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    colabServerUrl: COLAB_AI_SERVER_URL,
-    colabServerConfigured: validateServerUrl(COLAB_AI_SERVER_URL)
+    colabServerUrl: COLAB_AI_SERVER_URL || null,
+    colabServerConfigured: COLAB_AI_SERVER_URL ? validateServerUrl(COLAB_AI_SERVER_URL) : false
   });
 });
 
@@ -127,10 +134,19 @@ app.post('/api/edit', upload.single('image'), async (req, res) => {
   }
 
   // Validate AI server URL is configured
+  if (!COLAB_AI_SERVER_URL) {
+    return res.status(503).json({ 
+      error: 'AI server URL is not configured',
+      message: 'Please contact the administrator to set COLAB_AI_SERVER_URL in the server configuration',
+      code: 'AI_SERVER_NOT_CONFIGURED'
+    });
+  }
+
   if (!validateServerUrl(COLAB_AI_SERVER_URL)) {
     return res.status(503).json({ 
       error: 'AI server is not configured properly',
-      message: 'Please contact the administrator to configure the COLAB_AI_SERVER_URL'
+      message: 'Please contact the administrator to configure the COLAB_AI_SERVER_URL',
+      code: 'AI_SERVER_INVALID_URL'
     });
   }
 
@@ -249,8 +265,8 @@ app.listen(port, () => {
   console.log('MarketAIV3 Backend Server');
   console.log('='.repeat(60));
   console.log(`Server is running on http://localhost:${port}`);
-  console.log(`AI Server URL: ${COLAB_AI_SERVER_URL}`);
-  console.log(`AI Server Status: ${validateServerUrl(COLAB_AI_SERVER_URL) ? 'CONFIGURED' : 'NOT CONFIGURED'}`);
+  console.log(`AI Server URL: ${COLAB_AI_SERVER_URL || 'NOT CONFIGURED'}`);
+  console.log(`AI Server Status: ${COLAB_AI_SERVER_URL && validateServerUrl(COLAB_AI_SERVER_URL) ? 'CONFIGURED' : 'NOT CONFIGURED'}`);
   console.log(`Request Timeout: ${REQUEST_TIMEOUT}ms`);
   console.log(`Max Retries: ${MAX_RETRIES}`);
   console.log(`Retry Delay: ${RETRY_DELAY}ms`);
@@ -258,8 +274,12 @@ app.listen(port, () => {
   console.log(`Health Check: http://localhost:${port}/api/health`);
   console.log(`Edit Endpoint: http://localhost:${port}/api/edit`);
   console.log('='.repeat(60));
-  if (!validateServerUrl(COLAB_AI_SERVER_URL)) {
-    console.warn('\n⚠️  WARNING: AI Server URL is not configured!');
-    console.warn('Please set COLAB_AI_SERVER_URL in your .env file.\n');
+  if (!COLAB_AI_SERVER_URL) {
+    console.warn('\n⚠️  WARNING: AI Server URL is NOT configured!');
+    console.warn('Please set COLAB_AI_SERVER_URL in your .env file.');
+    console.warn('The /api/edit endpoint will not work until this is configured.\n');
+  } else if (!validateServerUrl(COLAB_AI_SERVER_URL)) {
+    console.warn('\n⚠️  WARNING: AI Server URL is invalid!');
+    console.warn('Please check COLAB_AI_SERVER_URL in your .env file.\n');
   }
 });

@@ -66,15 +66,18 @@ fi
 # Test backend server (quick start/stop)
 echo "6. Testing backend server..."
 cd backend
-PORT=3099 node routes/index.js &
+
+# Use a different port to avoid conflicts with running servers
+TEST_PORT=3099
+PORT=$TEST_PORT node routes/index.js &
 SERVER_PID=$!
 sleep 2
 
-if curl -s http://localhost:3099/api/health > /dev/null 2>&1; then
+if curl -s http://localhost:$TEST_PORT/api/health > /dev/null 2>&1; then
     echo "   ✓ Backend server started successfully"
     
     # Get health check data
-    HEALTH_DATA=$(curl -s http://localhost:3099/api/health)
+    HEALTH_DATA=$(curl -s http://localhost:$TEST_PORT/api/health)
     AI_SERVER_CONFIGURED=$(echo $HEALTH_DATA | grep -o '"colabServerConfigured":[^,}]*' | cut -d':' -f2)
     
     if [ "$AI_SERVER_CONFIGURED" = "true" ]; then
