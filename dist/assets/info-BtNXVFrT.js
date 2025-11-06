@@ -1,0 +1,1 @@
+const I="wdpyzvnxlwsnagpppbcu",c="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndkcHl6dm54bHdzbmFncHBwYmN1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjEwNjAyODcsImV4cCI6MjA3NjYzNjI4N30.C-XyB9gujbjgZ_ICaH2qa5YPfCtLFx1MUTgxQwaAink";export{I as projectId,c as publicAnonKey};
