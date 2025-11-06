@@ -1,1 +1,14 @@
-{\n  "name": "marketai-backend",\n  "version": "1.0.0",\n  "description": "Backend server for MarketAIV3",\n  "main": "server.js",\n  "scripts": {\n    "start": "node server.js",\n    "test": "echo \"Error: no test specified\" && exit 1"\n  },\n  "author": "Bbencaz",\n  "license": "ISC",\n  "dependencies": {\n    "express": "^4.18.2"\n  }\n}
+{
+  "name": "marketai-backend",
+  "version": "1.0.0",
+  "description": "Backend server for MarketAIV3",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
