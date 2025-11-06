@@ -1,135 +1,127 @@
-import { useState, useEffect } from 'react';
-import { Check, ArrowDown } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, ServerCrash, ArrowDown, Wand2 } from 'lucide-react';
 import { Button } from './ui/button';
-import type { CreationMethod, PostData } from '../App';
+import type { PostData } from '../App';
 
 interface OutputSelectionStepProps {
-  creationMethod: CreationMethod;
   postData: PostData;
   onSelect: (outputIndex: number) => void;
 }
 
-export function OutputSelectionStep({ creationMethod, postData, onSelect }: OutputSelectionStepProps) {
-  const [selectedOutput, setSelectedOutput] = useState<number | null>(postData.selectedOutput ?? null);
+export function OutputSelectionStep({ postData, onSelect }: OutputSelectionStepProps) {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editedImageUrl, setEditedImageUrl] = useState<string | null>(null);
 
-  // Generate mock outputs based on creation method
-  const outputs = generateMockOutputs(creationMethod, postData);
-
-  useEffect(() => {
-    if (selectedOutput !== null) {
-      onSelect(selectedOutput);
+  // This function is now called by a button click, not useEffect
+  const performImageEdit = async () => {
+    if (!postData.uploadedImage || !postData.imageEditDescription) {
+      setError("Missing image or prompt. Please go back and try again.");
+      return;
     }
-  }, [selectedOutput]);
+
+    setIsLoading(true);
+    setError(null);
+    setEditedImageUrl(null);
+
+    const formData = new FormData();
+    formData.append('image', postData.uploadedImage);
+    formData.append('prompt', postData.imageEditDescription);
+
+    try {
+      const response = await fetch('http://localhost:3000/api/edit', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: `The AI server failed with status: ${response.status}` }));
+        throw new Error(errorData.error);
+      }
+
+      const imageBlob = await response.blob();
+      const imageUrl = URL.createObjectURL(imageBlob);
+      setEditedImageUrl(imageUrl);
+
+    } catch (err) {
+      console.error('Failed to edit image:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const scrollToNext = () => {
+    onSelect(0);
     document.getElementById('platform-hashtags')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  return (
-    <div className="max-w-5xl mx-auto">
-      <div className="text-center mb-8">
-        <div className="inline-block px-4 py-1 bg-blue-100 text-blue-700 rounded-full text-sm mb-4">
-          Step 3
+  // Determine what to show in the main display area
+  const renderDisplayContent = () => {
+    if (isLoading) {
+      return (
+        <div className="text-center text-slate-500">
+          <Loader2 className="w-12 h-12 mx-auto animate-spin" />
+          <p className="mt-4">Your image is being enhanced by the AI...</p>
+          <p className="text-sm text-slate-400">This may take up to a minute.</p>
         </div>
-        <h2 className="text-slate-900 mb-2">Choose Your Favorite Design</h2>
-        <p className="text-slate-600">
-          Select one of the three AI-generated options below
-        </p>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
-        {outputs.map((output, index) => (
-          <div
-            key={index}
-            className={`bg-white rounded-xl overflow-hidden shadow-lg cursor-pointer transition-all ${
-              selectedOutput === index
-                ? 'ring-4 ring-blue-500 scale-105'
-                : 'hover:shadow-xl hover:scale-102'
-            }`}
-            onClick={() => setSelectedOutput(index)}
-          >
-            {/* Preview Image/Design */}
-            <div className="relative aspect-square" style={{ background: output.gradient }}>
-              <div className="absolute inset-0 flex flex-col justify-between p-6">
-                {/* Top Banner */}
-                {output.companyName && (
-                  <div className="bg-white/95 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg">
-                    <p className="text-slate-900">{output.companyName}</p>
-                    {output.companyPhone && (
-                      <p className="text-sm text-slate-600">{output.companyPhone}</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Center Content */}
-                <div className="text-center">
-                  <div className="bg-white/90 backdrop-blur-sm rounded-xl px-6 py-4 shadow-xl inline-block">
-                    <p className="text-slate-900">{output.mainText}</p>
-                  </div>
-                </div>
-
-                {/* Bottom Banner */}
-                {output.bottomText && (
-                  <div className="bg-slate-900/90 backdrop-blur-sm rounded-lg px-4 py-3 shadow-lg text-center">
-                    <p className="text-white">{output.bottomText}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Selection Indicator */}
-              {selectedOutput === index && (
-                <div className="absolute top-3 right-3 w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                  <Check className="w-5 h-5 text-white" />
-                </div>
-              )}
-            </div>
-
-            {/* Option Label */}
-            <div className="p-4 bg-slate-50 text-center">
-              <p className="text-slate-700">Option {index + 1}</p>
-            </div>
+      );
+    }
+    if (error) {
+      return (
+        <div className="text-center text-red-500 max-w-md mx-auto">
+          <ServerCrash className="w-12 h-12 mx-auto" />
+          <p className="mt-4 font-semibold">Error Processing Image</p>
+          <p className="text-sm text-red-400 mt-1">{error}</p>
+        </div>
+      );
+    }
+    if (editedImageUrl) {
+      return <img src={editedImageUrl} alt="AI Edited Output" className="w-full h-full object-contain rounded-lg" />;
+    }
+    // Default state: Show the original image and the "Enhance" button
+    if (postData.uploadedImage) {
+      return (
+        <div className="relative w-full h-full">
+          <img src={URL.createObjectURL(postData.uploadedImage)} alt="Original for editing" className="w-full h-full object-contain rounded-lg" />
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40">
+            <Button size="lg" onClick={performImageEdit} className="gap-2 text-lg">
+              <Wand2 className="w-5 h-5" />
+              Enhance with AI
+            </Button>
           </div>
-        ))}
-      </div>
-
-      {/* Continue Button */}
-      {selectedOutput !== null && (
-        <div className="text-center">
-          <Button onClick={scrollToNext} className="gap-2">
-            Continue to Platform Selection
-            <ArrowDown className="w-4 h-4" />
-          </Button>
         </div>
-      )}
+      );
+    }
+    return null; // Should not happen if logic is correct
+  };
+
+  return (
+    <div className="max-w-3xl mx-auto">
+      <div className="bg-white rounded-2xl p-8 shadow-lg">
+        <div className="text-center mb-8">
+          <div className="inline-block px-4 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm mb-4">
+            Step 3
+          </div>
+          <h2 className="text-slate-900 mb-2">Enhance Your Image</h2>
+          <p className="text-slate-600">
+            Click the button to apply your changes with AI.
+          </p>
+        </div>
+
+        <div className="w-full aspect-square bg-slate-100 rounded-lg flex items-center justify-center border">
+          {renderDisplayContent()}
+        </div>
+
+        {editedImageUrl && !isLoading && (
+          <div className="mt-8 text-center">
+            <Button onClick={scrollToNext} className="gap-2">
+              Continue to Final Preview
+              <ArrowDown className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   );
-}
-
-function generateMockOutputs(creationMethod: CreationMethod, postData: PostData) {
-  const gradients = [
-    'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-    'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  ];
-
-  if (creationMethod === 'ai-generated') {
-    return gradients.map((gradient, index) => ({
-      gradient,
-      companyName: postData.companyName || 'Your Business',
-      companyPhone: postData.companyPhone || '',
-      mainText: postData.description || 'Your amazing offer',
-      bottomText: ['Limited Time!', 'Don\'t Miss Out!', 'Shop Now!'][index],
-    }));
-  } else {
-    // For upload & enhance, show variations
-    return gradients.map((gradient, index) => ({
-      gradient,
-      companyName: null,
-      companyPhone: null,
-      mainText: postData.imageEditDescription 
-        ? ['Enhanced Version', 'Styled Version', 'Premium Version'][index]
-        : 'Enhanced Image',
-      bottomText: null,
-    }));
-  }
 }
